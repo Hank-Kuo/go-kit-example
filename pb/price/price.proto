@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package pb;
+
+// The Price service definition.
+service Price {
+  rpc Sum(SumRequest) returns (SumResponse);
+  rpc Exchange(ExchangeRequest) returns (ExchangeResponse);
+}
+
+message SumRequest {
+  int64 a = 1;
+  int64 b = 2;
+}
+
+message SumResponse {
+  int64 c = 3;
+}
+
+message ExchangeRequest {
+  int64 a = 1;
+  string b = 2;
+}
+
+message ExchangeResponse {
+  int64 c = 3;
+}
