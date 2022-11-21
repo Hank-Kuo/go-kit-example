@@ -14,8 +14,10 @@
 ```bash
 brew install go
 brew install protobuf
+brew install grpcurl
 go get google.golang.org/grpc
-go get github.com/golang/protobuf/protoc-gen-go
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 ```
 - go vendor
 ```bash
@@ -37,68 +39,72 @@ call service
 make call APP={xxx}
 ```
 
+test service
+```bash
+make test APP={xxx}
+```
+
 ## API
-
 - product API
-request
-```json
-{
-    "user": "hank.kuo",
-    "product": "Bike",
-    "price": 100,
-    "fee": 5,
-    "currency": "USD"
-}
-```
-response
-```json
-{
-    "status": "success",
-    "message": "user buy a product",
-    "data": {
-        "cost": 3150
-    },
-}
-```
+    * endpoint: localhost:8180/product
+        * request
+        ```json
+        {
+            "user": "hank.kuo",
+            "product": "Bike",
+            "price": 100,
+            "fee": 5,
+            "currency": "USD"
+        }
+        ```
+        * response
+        ```json
+        {
+            "status": "success",
+            "message": "user buy a product",
+            "data": {
+                "cost": 3150
+            },
+        }
+        ```
 
-- price API request
-request
-```json
-{
-    "price": 100,
-    "fee": 5,
-    "currency": "USD"
-}
-```
-response
-```json
-{
-    "status": "success",
-    "message": "total cost",
-    "data": {
-        "cost": 105
-    },
-}
-```
-
-request
-```json
-{
-    "cost": 105,
-    "currency": "USD"
-}
-```
-
-response
-```json
-{
-    "status": "success",
-    "message": "total cost",
-    "data": {
-        "cost": 105
-    },
-}
-```
+- price API
+    * endpoint: localhost:8180/sum
+        * request
+        ```json
+        {
+            "price": 100,
+            "fee": 5,
+        }
+        ```
+        * response
+        ```json
+        {
+            "status": "success",
+            "message": "total cost",
+            "data": {
+                "cost": 105
+            },
+        }
+        ```
+    * endpoint: localhost:8180/exchange
+        * request
+        ```json
+        {
+            "cost": 105,
+            "currency": "USD"
+        }
+        ```
+        * response
+        ```json
+        {
+            "status": "success",
+            "message": "total cost",
+            "data": {
+                "cost": 105
+            },
+        }
+        ```
 
 support currencies: 
 - "USD": 30
@@ -115,6 +121,9 @@ http://localhost:9090
 
 ## Grafana UI:
 http://localhost:3000
+## Zipkin
+http://localhost:9411
+
 
 
 ## References

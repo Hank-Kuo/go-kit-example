@@ -1,0 +1,10 @@
+service:
+  - name: priceService
+  - host: localhost
+  - httPort: 8080
+  - grpcPort: 8181
+  - JAEGER_URL: localhost
+logger:
+  - level: error
+  
+

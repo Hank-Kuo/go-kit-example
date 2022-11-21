@@ -29,6 +29,7 @@ func JSONErrorDecoder(r *http.Response) error {
 	return errors.New(w.Error)
 }
 
+// json response format
 func EncodeJSONResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if headerer, ok := response.(httptransport.Headerer); ok {
@@ -54,6 +55,7 @@ func EncodeJSONResponse(_ context.Context, w http.ResponseWriter, response inter
 	return json.NewEncoder(w).Encode(response)
 }
 
+// json error response format
 func ErrorEncodeJSONResponse(f func(errorVal errors.Error) (code int)) func(_ context.Context, err error, w http.ResponseWriter) {
 	return func(_ context.Context, err error, w http.ResponseWriter) {
 		code := http.StatusInternalServerError
@@ -90,6 +92,6 @@ func ErrorEncodeJSONResponse(f func(errorVal errors.Error) (code int)) func(_ co
 		}
 
 		w.WriteHeader(code)
-		json.NewEncoder(w).Encode(ErrorResponse{Status: "Fail", Message: message})
+		json.NewEncoder(w).Encode(ErrorResponse{Status: "fail", Message: message})
 	}
 }

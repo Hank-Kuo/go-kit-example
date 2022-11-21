@@ -29,7 +29,6 @@ func LoggingMiddleware(logger log.Logger) endpoint.Middleware {
 				logger.Log("transport_error", err, "took", time.Since(begin))
 			}(time.Now())
 			return next(ctx, request)
-
 		}
 	}
 }

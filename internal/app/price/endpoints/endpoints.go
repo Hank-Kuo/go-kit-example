@@ -18,7 +18,7 @@ import (
 	stdzipkin "github.com/openzipkin/zipkin-go"
 	"github.com/sony/gobreaker"
 
-	"github.com/Hank-Kuo/go-kit-example/internal/app/price"
+	"github.com/Hank-Kuo/go-kit-example/internal/app/price/service"
 )
 
 type Endpoints struct {
@@ -26,7 +26,7 @@ type Endpoints struct {
 	ExchangeEndpoint endpoint.Endpoint
 }
 
-func New(svc price.PriceService, logger log.Logger, duration metrics.Histogram, otTracer stdopentracing.Tracer, zipkinTracer *stdzipkin.Tracer) Endpoints {
+func New(svc service.Service, logger log.Logger, duration metrics.Histogram, otTracer stdopentracing.Tracer, zipkinTracer *stdzipkin.Tracer) Endpoints {
 	var sumEndpoint endpoint.Endpoint
 	{
 		method := "sum"
@@ -61,7 +61,7 @@ func New(svc price.PriceService, logger log.Logger, duration metrics.Histogram, 
 
 }
 
-func makeSumEndpoint(svc price.PriceService) endpoint.Endpoint {
+func makeSumEndpoint(svc service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(SumRequest)
 		if err := req.validate(); err != nil {
@@ -71,11 +71,11 @@ func makeSumEndpoint(svc price.PriceService) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		return SumResponse{Res: res}, nil
+		return SumResponse{Cost: res}, nil
 	}
 }
 
-func makeExchangeEndpoint(svc price.PriceService) endpoint.Endpoint {
+func makeExchangeEndpoint(svc service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(SumRequest)
 		if err := req.validate(); err != nil {
@@ -85,19 +85,21 @@ func makeExchangeEndpoint(svc price.PriceService) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		return SumResponse{Res: res}, nil
+		return SumResponse{Cost: res}, nil
 	}
 }
 
+// for client
 func (e Endpoints) Sum(ctx context.Context, price, fee int64) (int64, error) {
 	resp, err := e.SumEndpoint(ctx, SumRequest{Price: price, Fee: fee})
 	if err != nil {
 		return 0, err
 	}
 	response := resp.(SumResponse)
-	return response.Res, nil
+	return response.Cost, nil
 }
 
+// for client
 func (e Endpoints) Exchange(ctx context.Context, cost int64, currency string) (int64, error) {
 	resp, err := e.ExchangeEndpoint(ctx, SumRequest{Price: 100, Fee: 100})
 	if err != nil {
@@ -105,5 +107,5 @@ func (e Endpoints) Exchange(ctx context.Context, cost int64, currency string) (i
 	}
 	response := resp.(SumResponse)
 
-	return response.Res, nil
+	return response.Cost, nil
 }

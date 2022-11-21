@@ -3,20 +3,19 @@ package service
 import (
 	"context"
 
-	"github.com/Hank-Kuo/go-kit-example/internal/app/price"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics"
 )
 
-type Middleware func(price.PriceService) price.PriceService
+type Middleware func(Service) Service
 
 type loggingMiddleware struct {
 	logger log.Logger
-	next   price.PriceService
+	next   Service
 }
 
 func LoggingMiddleware(logger log.Logger) Middleware {
-	return func(next price.PriceService) price.PriceService {
+	return func(next Service) Service {
 		return loggingMiddleware{logger, next}
 	}
 }
@@ -38,11 +37,11 @@ func (mw loggingMiddleware) Exchange(ctx context.Context, a int64, b string) (v 
 type instrumentingMiddleware struct {
 	ints  metrics.Counter
 	chars metrics.Counter
-	next  price.PriceService
+	next  Service
 }
 
 func InstrumentingMiddleware(ints, chars metrics.Counter) Middleware {
-	return func(next price.PriceService) price.PriceService {
+	return func(next Service) Service {
 		return instrumentingMiddleware{
 			ints:  ints,
 			chars: chars,

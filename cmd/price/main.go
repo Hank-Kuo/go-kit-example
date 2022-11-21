@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +14,12 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/prometheus"
+	kitgrpc "github.com/go-kit/kit/transport/grpc"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 
 	"github.com/kelseyhightower/envconfig"
 	stdopentracing "github.com/opentracing/opentracing-go"
@@ -20,9 +27,12 @@ import (
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/Hank-Kuo/go-kit-example/internal/app/price/endpoints"
 	priceEndpoint "github.com/Hank-Kuo/go-kit-example/internal/app/price/endpoints"
 	priceService "github.com/Hank-Kuo/go-kit-example/internal/app/price/service"
+	priceGrpcTransport "github.com/Hank-Kuo/go-kit-example/internal/app/price/transports/grpc"
 	priceHttpTransport "github.com/Hank-Kuo/go-kit-example/internal/app/price/transports/http"
+	pb "github.com/Hank-Kuo/go-kit-example/pb/price"
 	"github.com/Hank-Kuo/go-kit-example/pkg/tracer"
 )
 
@@ -98,12 +108,12 @@ func main() {
 	// service
 	srv := priceService.NewService(logger, cout1, cout2)
 	endpoints := priceEndpoint.New(srv, logger, duration, otTracer, zipkin)
-	// hs := health.NewServer()
-	// hs.SetServingStatus(cfg.ServieName, healthgrpc.HealthCheckResponse_SERVING)
+	hs := health.NewServer()
+	hs.SetServingStatus(cfg.ServiceName, healthgrpc.HealthCheckResponse_SERVING)
 
 	wg := &sync.WaitGroup{}
-	go startHTTPServer(ctx, wg, endpoints, otTracer, zipkin, cfg.HttpPort, logger)
-	// go startGRPCServer(ctx, wg, endpoints, tracer, zipkin, cfg.GrpcPort, hs, logger)
+	go startHTTPServer(ctx, wg, endpoints, otTracer, zipkin, cfg.ServiceHost, cfg.HttpPort, logger)
+	go startGRPCServer(ctx, wg, endpoints, otTracer, zipkin, cfg.ServiceHost, cfg.GrpcPort, hs, logger)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -113,7 +123,7 @@ func main() {
 	wg.Wait()
 }
 
-func startHTTPServer(ctx context.Context, wg *sync.WaitGroup, endpoints priceEndpoint.Endpoints, otTracer stdopentracing.Tracer, zipkinTracer *zipkin.Tracer, port string, logger log.Logger) {
+func startHTTPServer(ctx context.Context, wg *sync.WaitGroup, endpoints priceEndpoint.Endpoints, otTracer stdopentracing.Tracer, zipkinTracer *zipkin.Tracer, host string, port string, logger log.Logger) {
 	wg.Add(1)
 	defer wg.Done()
 
@@ -122,9 +132,12 @@ func startHTTPServer(ctx context.Context, wg *sync.WaitGroup, endpoints priceEnd
 		return
 	}
 
-	p := fmt.Sprintf(":%s", port)
+	p := fmt.Sprintf("%s:%s", host, port)
 	// create a server
-	srv := &http.Server{Addr: p, Handler: priceHttpTransport.NewHTTPHandler(endpoints, otTracer, zipkinTracer, logger)}
+	srv := &http.Server{
+		Addr:    p,
+		Handler: priceHttpTransport.NewHTTPHandler(endpoints, otTracer, zipkinTracer, logger),
+	}
 	level.Info(logger).Log("protocol", "HTTP", "exposed", port)
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
@@ -141,4 +154,35 @@ func startHTTPServer(ctx context.Context, wg *sync.WaitGroup, endpoints priceEnd
 	srv.Shutdown(shutdownCtx)
 
 	level.Info(logger).Log("protocol", "HTTP", "Shutdown", "http server gracefully stopped")
+}
+
+func startGRPCServer(ctx context.Context, wg *sync.WaitGroup, endpoints endpoints.Endpoints, tracer stdopentracing.Tracer, zipkinTracer *zipkin.Tracer, host string, port string, hs *health.Server, logger log.Logger) {
+	wg.Add(1)
+	defer wg.Done()
+
+	p := fmt.Sprintf("%s:%s", host, port)
+	listener, err := net.Listen("tcp", p)
+	if err != nil {
+		level.Error(logger).Log("protocol", "GRPC", "listen", port, "err", err)
+		os.Exit(1)
+	}
+
+	var server *grpc.Server
+	level.Info(logger).Log("protocol", "GRPC", "exposed", port)
+	server = grpc.NewServer(grpc.UnaryInterceptor(kitgrpc.Interceptor))
+	pb.RegisterPriceServer(server, priceGrpcTransport.MakeGRPCServer(endpoints, tracer, zipkinTracer, logger))
+	healthgrpc.RegisterHealthServer(server, hs)
+	reflection.Register(server)
+
+	go func() {
+		err = server.Serve(listener)
+		if err != nil {
+			fmt.Printf("grpc serve : %s\n", err)
+		}
+	}()
+
+	<-ctx.Done()
+
+	server.GracefulStop()
+	fmt.Println("grpc server gracefully stopped")
 }

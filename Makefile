@@ -7,11 +7,16 @@ IMAGE_NAME ?= hank-go-kit-example
 local:
 	@export MODE=dev;\
 	@echo Starting local docker compose
-	
+	docker-compose -f docker-compose.local.yaml up 
+
 call:
 	@echo Starting calling $$APP service
 	@bash ./cmd/$$APP/call.sh
 
+pb-complier:
+	@echo Compiling $$APP proto...
+	@protoc --go_out=. --go-grpc_out=require_unimplemented_servers=false:. ./pb/$$APP/$$APP.proto
+	
 run:
 	@echo Starting $$APP service
 	go run ./cmd/$$APP/main.go

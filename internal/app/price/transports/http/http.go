@@ -15,14 +15,14 @@ import (
 	stdzipkin "github.com/openzipkin/zipkin-go"
 	"github.com/rs/cors"
 
-	price "github.com/Hank-Kuo/go-kit-example/internal/app/price"
 	priceEndpoint "github.com/Hank-Kuo/go-kit-example/internal/app/price/endpoints"
+	"github.com/Hank-Kuo/go-kit-example/internal/app/price/service"
+	"github.com/Hank-Kuo/go-kit-example/pkg/errors"
 	"github.com/Hank-Kuo/go-kit-example/pkg/response"
 )
 
 func NewHTTPHandler(endpoints priceEndpoint.Endpoints, otTracer stdopentracing.Tracer, zipkinTracer *stdzipkin.Tracer, logger log.Logger) http.Handler {
 	options := []httptransport.ServerOption{
-		// httptransport.ServerBefore(telepresence.HTTPToContext()),
 		httptransport.ServerErrorEncoder(response.ErrorEncodeJSONResponse(customErrorEncoder)),
 		httptransport.ServerErrorLogger(logger),
 	}
@@ -36,7 +36,7 @@ func NewHTTPHandler(endpoints priceEndpoint.Endpoints, otTracer stdopentracing.T
 	return cors.AllowAll().Handler(m)
 }
 
-func NewHTTPClient(instance string, otTracer stdopentracing.Tracer, zipkinTracer *stdzipkin.Tracer, logger log.Logger) (price.PriceService, error) {
+func NewHTTPClient(instance string, otTracer stdopentracing.Tracer, zipkinTracer *stdzipkin.Tracer, logger log.Logger) (service.Service, error) {
 	if !strings.HasPrefix(instance, "http") {
 		instance = "http://" + instance
 	}
@@ -106,4 +106,14 @@ func exchangeHandler(m *bone.Mux, endpoints priceEndpoint.Endpoints, options []h
 		response.EncodeJSONResponse,
 		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "Sum", logger)))...,
 	))
+}
+
+func customErrorEncoder(err errors.Error) int {
+
+	// switch {
+	// case customErr.Contains(err, ErrTwoZeroes):
+	// 	return http.StatusInternalServerError
+	// }
+
+	return http.StatusInternalServerError
 }

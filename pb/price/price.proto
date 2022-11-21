@@ -2,26 +2,28 @@ syntax = "proto3";
 
 package pb;
 
+option go_package = "./pb/price";
+
 // The Price service definition.
 service Price {
   rpc Sum(SumRequest) returns (SumResponse);
-  rpc Exchange(ExchangeRequest) returns (ExchangeResponse);
+  // rpc Exchange(ExchangeRequest) returns (ExchangeResponse);
 }
 
 message SumRequest {
-  int64 a = 1;
-  int64 b = 2;
+  int64 price = 1;
+  int64 fee = 2;
 }
 
 message SumResponse {
-  int64 c = 3;
+  int64 cost = 1;
 }
 
-message ExchangeRequest {
-  int64 a = 1;
-  string b = 2;
-}
+// message ExchangeRequest {
+// int64 Cost = 1;
+//  string Currency = 2;
+// }
 
-message ExchangeResponse {
-  int64 c = 3;
-}
+// message ExchangeResponse {
+  // int64 Cost = 3;
+//}
